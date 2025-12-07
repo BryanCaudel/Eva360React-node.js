@@ -1,34 +1,77 @@
 import React, { useState } from "react";
-import { View, Text, TextInput, TouchableOpacity, ActivityIndicator } from "react-native";
-import { crearCodigo } from "../api"; // <- ruta corregida
+import { View, Text, TextInput, TouchableOpacity, ActivityIndicator, Alert, Platform } from "react-native";
+import { crearCodigo } from "../api";
 
 export default function ProgramarEvaluacionScreen({ navigation }) {
   const [nombre, setNombre] = useState("");
   const [loading, setLoading] = useState(false);
   const [codigo, setCodigo] = useState("");
 
-  
+  // Genera un código único de 6 caracteres para el evaluado
   const onGenerar = async () => {
     const n = nombre.trim();
-    if (!n) return;
+    if (!n) {
+      if (Platform.OS === "web") {
+        alert("Por favor ingresa el nombre del evaluado.");
+      } else {
+        Alert.alert("Campo requerido", "Por favor ingresa el nombre del evaluado para generar el código.");
+      }
+      return;
+    }
+    
     setLoading(true);
     setCodigo("");
     try {
       const data = await crearCodigo(n, 1);
       setCodigo(data.codigo);
     } catch (e) {
-      alert(e.message || "Error generando código");
+      // Mensajes de error específicos
+      let mensajeError = "No se pudo generar el código. Intenta nuevamente.";
+      let tituloError = "Error";
+      
+      if (e.message) {
+        if (e.message.includes("Token") || e.message.includes("autenticación") || e.message.includes("401")) {
+          tituloError = "Sesión expirada";
+          mensajeError = "Tu sesión ha expirado. Por favor inicia sesión nuevamente.";
+        } else if (e.message.includes("duplicado") || e.message.includes("409")) {
+          tituloError = "Código duplicado";
+          mensajeError = "El código que intentas crear ya existe. Intenta con otro nombre.";
+        } else if (e.message.includes("Timeout") || e.message.includes("no respondió")) {
+          tituloError = "Error de conexión";
+          mensajeError = "El servidor no está respondiendo. Verifica tu conexión a internet.";
+        } else if (e.message.includes("conectar") || e.message.includes("conexión")) {
+          tituloError = "Error de conexión";
+          mensajeError = "No se pudo conectar con el servidor. Verifica tu conexión a internet.";
+        } else {
+          mensajeError = e.message;
+        }
+      }
+      
+      if (Platform.OS === "web") {
+        alert(`${tituloError}: ${mensajeError}`);
+      } else {
+        Alert.alert(tituloError, mensajeError);
+      }
     } finally {
       setLoading(false);
     }
   };
 
+  // Copia el código generado al portapapeles
   const onCopiar = async () => {
     try {
       await navigator.clipboard.writeText(codigo);
-      alert("Código copiado");
+      if (Platform.OS === "web") {
+        alert("Código copiado al portapapeles");
+      } else {
+        Alert.alert("Éxito", "Código copiado al portapapeles");
+      }
     } catch {
-      alert("No se pudo copiar");
+      if (Platform.OS === "web") {
+        alert("No se pudo copiar el código. Intenta copiarlo manualmente.");
+      } else {
+        Alert.alert("Error", "No se pudo copiar el código. Intenta copiarlo manualmente.");
+      }
     }
   };
 
@@ -36,6 +79,7 @@ export default function ProgramarEvaluacionScreen({ navigation }) {
     <View style={{ flex: 1, padding: 16, gap: 12 }}>
       <Text style={{ fontSize: 22, fontWeight: "800" }}>Programar evaluación</Text>
 
+      {/* Input para el nombre del evaluado: estilos con bordes redondeados */}
       <TextInput
         placeholder="Nombre del evaluado"
         value={nombre}
@@ -46,6 +90,7 @@ export default function ProgramarEvaluacionScreen({ navigation }) {
         }}
       />
 
+      {/* Botón para generar código: se deshabilita si está cargando o el nombre está vacío */}
       <TouchableOpacity
         onPress={onGenerar}
         disabled={loading || !nombre.trim()}

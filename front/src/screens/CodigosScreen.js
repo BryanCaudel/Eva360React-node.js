@@ -1,23 +1,28 @@
 import React, { useEffect, useState, useCallback } from "react";
-import { View, Text, FlatList, TouchableOpacity, ActivityIndicator, Modal, TextInput, Alert } from "react-native";
+import { View, Text, FlatList, TouchableOpacity, ActivityIndicator, Modal, TextInput, Alert, Platform } from "react-native";
 import { listarCodigos, actualizarCodigo, eliminarCodigo } from "../api";
 
 export default function CodigosScreen({ navigation }) {
+  // Estados para la lista de códigos
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState("");
+  
+  // Estados para el modal de edición
   const [editModalVisible, setEditModalVisible] = useState(false);
   const [editingItem, setEditingItem] = useState(null);
   const [editNombre, setEditNombre] = useState("");
   const [editCodigo, setEditCodigo] = useState("");
   const [editActivo, setEditActivo] = useState(true);
   const [saving, setSaving] = useState(false);
+  
+  // Estados para el modal de eliminación
   const [deletingId, setDeletingId] = useState(null);
   const [deleteModalVisible, setDeleteModalVisible] = useState(false);
   const [itemToDelete, setItemToDelete] = useState(null);
 
-
+  // Carga la lista de códigos desde la API
   const load = async () => {
     setError("");
     setLoading(true);
@@ -25,26 +30,64 @@ export default function CodigosScreen({ navigation }) {
       const data = await listarCodigos();
       setItems(Array.isArray(data) ? data : []);
     } catch (e) {
-      setError(e.message || "Error cargando códigos");
+      // Mensajes de error específicos
+      let mensajeError = "No se pudieron cargar los códigos. Intenta nuevamente.";
+      
+      if (e.message) {
+        if (e.message.includes("Token") || e.message.includes("autenticación") || e.message.includes("401")) {
+          mensajeError = "Tu sesión ha expirado. Por favor inicia sesión nuevamente.";
+        } else if (e.message.includes("Timeout") || e.message.includes("no respondió")) {
+          mensajeError = "El servidor no está respondiendo. Verifica tu conexión.";
+        } else if (e.message.includes("conectar") || e.message.includes("conexión")) {
+          mensajeError = "No se pudo conectar con el servidor. Verifica tu conexión a internet.";
+        } else {
+          mensajeError = e.message;
+        }
+      }
+      
+      setError(mensajeError);
+      if (Platform.OS === "web") {
+        alert(`Error al cargar códigos: ${mensajeError}`);
+      } else {
+        Alert.alert("Error al cargar códigos", mensajeError);
+      }
     } finally {
       setLoading(false);
     }
   };
 
+  // Función para refrescar la lista al hacer pull-to-refresh
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
     try {
       const data = await listarCodigos();
       setItems(Array.isArray(data) ? data : []);
     } catch (e) {
-      setError(e.message || "Error cargando códigos");
+      // Mensajes de error específicos
+      let mensajeError = "No se pudieron cargar los códigos. Intenta nuevamente.";
+      
+      if (e.message) {
+        if (e.message.includes("Token") || e.message.includes("autenticación") || e.message.includes("401")) {
+          mensajeError = "Tu sesión ha expirado. Por favor inicia sesión nuevamente.";
+        } else if (e.message.includes("Timeout") || e.message.includes("no respondió")) {
+          mensajeError = "El servidor no está respondiendo. Verifica tu conexión.";
+        } else if (e.message.includes("conectar") || e.message.includes("conexión")) {
+          mensajeError = "No se pudo conectar con el servidor. Verifica tu conexión a internet.";
+        } else {
+          mensajeError = e.message;
+        }
+      }
+      
+      setError(mensajeError);
     } finally {
       setRefreshing(false);
     }
   }, []);
 
+  // Carga los códigos al montar el componente
   useEffect(() => { load(); }, []);
 
+  // Abre el modal de edición con los datos del código seleccionado
   const abrirEditar = (item) => {
     setEditingItem(item);
     setEditNombre(item.evaluado_nombre || "");
@@ -53,6 +96,7 @@ export default function CodigosScreen({ navigation }) {
     setEditModalVisible(true);
   };
 
+  // Cierra el modal de edición y limpia los estados
   const cerrarEditar = () => {
     setEditModalVisible(false);
     setEditingItem(null);
@@ -61,11 +105,37 @@ export default function CodigosScreen({ navigation }) {
     setEditActivo(true);
   };
 
+  // Guarda los cambios realizados en el código
   const guardarEdicion = async () => {
     if (!editingItem) return;
     
     if (!editNombre.trim()) {
-      Alert.alert("Error", "El nombre del evaluado es requerido");
+      const mensaje = "El nombre del evaluado es obligatorio. Por favor ingresa un nombre válido.";
+      if (Platform.OS === "web") {
+        alert(mensaje);
+      } else {
+        Alert.alert("Campo requerido", mensaje);
+      }
+      return;
+    }
+    
+    if (!editCodigo.trim()) {
+      const mensaje = "El código es obligatorio. Por favor ingresa un código válido.";
+      if (Platform.OS === "web") {
+        alert(mensaje);
+      } else {
+        Alert.alert("Campo requerido", mensaje);
+      }
+      return;
+    }
+    
+    if (editCodigo.trim().length !== 6) {
+      const mensaje = "El código debe tener exactamente 6 caracteres (3 letras y 3 números).";
+      if (Platform.OS === "web") {
+        alert(mensaje);
+      } else {
+        Alert.alert("Código inválido", mensaje);
+      }
       return;
     }
 
@@ -80,17 +150,57 @@ export default function CodigosScreen({ navigation }) {
       await actualizarCodigo(editingItem.id, datos);
       cerrarEditar();
       await load(); // Recargar la lista
-      Alert.alert("Éxito", "Código actualizado correctamente");
+      if (Platform.OS === "web") {
+        alert("Éxito: El código se actualizó correctamente.");
+      } else {
+        Alert.alert("Éxito", "El código se actualizó correctamente.");
+      }
     } catch (e) {
-      Alert.alert("Error", e.message || "No se pudo actualizar el código");
+      // Mensajes de error específicos
+      let mensajeError = "No se pudo actualizar el código. Intenta nuevamente.";
+      let tituloError = "Error al actualizar";
+      
+      if (e.message) {
+        if (e.message.includes("Token") || e.message.includes("autenticación") || e.message.includes("401")) {
+          tituloError = "Sesión expirada";
+          mensajeError = "Tu sesión ha expirado. Por favor inicia sesión nuevamente.";
+        } else if (e.message.includes("duplicado") || e.message.includes("409")) {
+          tituloError = "Código duplicado";
+          mensajeError = `El código "${editCodigo.trim().toUpperCase()}" ya existe. Por favor usa otro código.`;
+        } else if (e.message.includes("no encontrado") || e.message.includes("404")) {
+          tituloError = "Código no encontrado";
+          mensajeError = "El código que intentas editar ya no existe. La lista se actualizará.";
+          await load();
+        } else if (e.message.includes("Timeout") || e.message.includes("no respondió")) {
+          tituloError = "Error de conexión";
+          mensajeError = "El servidor no está respondiendo. Verifica tu conexión a internet.";
+        } else if (e.message.includes("conectar") || e.message.includes("conexión")) {
+          tituloError = "Error de conexión";
+          mensajeError = "No se pudo conectar con el servidor. Verifica tu conexión a internet.";
+        } else {
+          mensajeError = e.message;
+        }
+      }
+      
+      if (Platform.OS === "web") {
+        alert(`${tituloError}: ${mensajeError}`);
+      } else {
+        Alert.alert(tituloError, mensajeError);
+      }
     } finally {
       setSaving(false);
     }
   };
 
+  // Abre el modal de confirmación para eliminar un código
   const confirmarEliminar = (item) => {
     if (!item || !item.id) {
-      Alert.alert("Error", "Información del código inválida");
+      const mensaje = "Información del código inválida";
+      if (Platform.OS === "web") {
+        alert(mensaje);
+      } else {
+        Alert.alert("Error", mensaje);
+      }
       return;
     }
 
@@ -98,6 +208,7 @@ export default function CodigosScreen({ navigation }) {
     setDeleteModalVisible(true);
   };
 
+  // Confirma la eliminación después de la validación del usuario
   const confirmarEliminacionFinal = () => {
     if (itemToDelete) {
       setDeleteModalVisible(false);
@@ -106,23 +217,61 @@ export default function CodigosScreen({ navigation }) {
     }
   };
 
+  // Cancela la eliminación y cierra el modal
   const cancelarEliminacion = () => {
     setDeleteModalVisible(false);
     setItemToDelete(null);
   };
 
+  // Elimina o desactiva el código según tenga sesiones con respuestas
   const eliminar = async (item) => {
     setDeletingId(item.id);
     try {
       const resultado = await eliminarCodigo(item.id);
       await load();
       if (resultado && resultado.desactivado) {
-        Alert.alert("Código desactivado", "El código fue desactivado porque tiene sesiones con respuestas asociadas");
+        const mensaje = "El código fue desactivado porque tiene evaluaciones completadas asociadas. No se puede eliminar para mantener la integridad de los datos.";
+        if (Platform.OS === "web") {
+          alert(`Código desactivado: ${mensaje}`);
+        } else {
+          Alert.alert("Código desactivado", mensaje);
+        }
       } else {
-        Alert.alert("Éxito", "Código eliminado correctamente");
+        if (Platform.OS === "web") {
+          alert("Éxito: El código se eliminó correctamente.");
+        } else {
+          Alert.alert("Éxito", "El código se eliminó correctamente.");
+        }
       }
     } catch (e) {
-      Alert.alert("Error", e.message || "No se pudo eliminar el código");
+      // Mensajes de error específicos
+      let mensajeError = "No se pudo eliminar el código. Intenta nuevamente.";
+      let tituloError = "Error al eliminar";
+      
+      if (e.message) {
+        if (e.message.includes("Token") || e.message.includes("autenticación") || e.message.includes("401")) {
+          tituloError = "Sesión expirada";
+          mensajeError = "Tu sesión ha expirado. Por favor inicia sesión nuevamente.";
+        } else if (e.message.includes("no encontrado") || e.message.includes("404")) {
+          tituloError = "Código no encontrado";
+          mensajeError = "El código que intentas eliminar ya no existe. La lista se actualizará.";
+          await load();
+        } else if (e.message.includes("Timeout") || e.message.includes("no respondió")) {
+          tituloError = "Error de conexión";
+          mensajeError = "El servidor no está respondiendo. Verifica tu conexión a internet.";
+        } else if (e.message.includes("conectar") || e.message.includes("conexión")) {
+          tituloError = "Error de conexión";
+          mensajeError = "No se pudo conectar con el servidor. Verifica tu conexión a internet.";
+        } else {
+          mensajeError = e.message;
+        }
+      }
+      
+      if (Platform.OS === "web") {
+        alert(`${tituloError}: ${mensajeError}`);
+      } else {
+        Alert.alert(tituloError, mensajeError);
+      }
     } finally {
       setDeletingId(null);
     }
@@ -226,7 +375,7 @@ export default function CodigosScreen({ navigation }) {
         <Text style={{ color: "white", fontWeight: "700" }}>Volver</Text>
       </TouchableOpacity>
 
-      {/* Modal de edición */}
+      {/* Modal de edición: permite modificar nombre, código y estado activo */}
       <Modal
         visible={editModalVisible}
         animationType="slide"
@@ -348,7 +497,7 @@ export default function CodigosScreen({ navigation }) {
         </View>
       </Modal>
 
-      {/* Modal de confirmación de eliminación */}
+      {/* Modal de confirmación de eliminación: solicita confirmación antes de eliminar */}
       <Modal
         visible={deleteModalVisible}
         animationType="fade"

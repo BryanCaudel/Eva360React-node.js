@@ -596,3 +596,160 @@
 [2025-12-06T00:15:11.341Z] INFO  Sesión finalizada | {"endpoint":"/captura/finalizar","sesion_id":17}
 [2025-12-06T00:15:22.385Z] INFO  REQUEST | {"method":"GET","url":"/admin/evaluaciones","ip":"127.0.0.1"}
 [2025-12-06T00:15:33.498Z] INFO  REQUEST | {"method":"GET","url":"/admin/evaluaciones-por-evaluado","ip":"127.0.0.1"}
+[2025-12-07T09:31:35.995Z] INFO  API escuchando en http://0.0.0.0:3001 | {"port":3001}
+[2025-12-07T09:31:36.000Z] INFO  API accesible desde: http://localhost:3001 | {"port":3001}
+[2025-12-07T09:31:36.000Z] INFO  Para dispositivos móviles, usa la IP de tu máquina en la red local | {"port":3001}
+[2025-12-07T09:44:58.907Z] INFO  API escuchando en http://0.0.0.0:3001 | {"port":3001}
+[2025-12-07T09:46:47.481Z] INFO  REQUEST | {"method":"GET","url":"/admin/codigos","ip":"127.0.0.1"}
+[2025-12-07T09:53:51.774Z] INFO  API escuchando en http://0.0.0.0:3001 | {"port":3001}
+[2025-12-07T09:57:38.196Z] INFO  REQUEST | {"method":"POST","url":"/admin/codigos","ip":"127.0.0.1"}
+[2025-12-07T09:57:38.220Z] INFO  Código creado | {"endpoint":"/admin/codigos","id":17,"codigo":"KQX917"}
+[2025-12-07T10:01:27.148Z] INFO  API escuchando en http://0.0.0.0:3001 | {"port":3001}
+[2025-12-07T10:02:16.178Z] INFO  REQUEST | {"method":"GET","url":"/admin/codigos","ip":"127.0.0.1"}
+[2025-12-07T10:02:19.171Z] INFO  REQUEST | {"method":"GET","url":"/admin/evaluaciones-por-evaluado","ip":"127.0.0.1"}
+[2025-12-07T10:02:20.467Z] INFO  REQUEST | {"method":"GET","url":"/admin/evaluaciones","ip":"127.0.0.1"}
+[2025-12-07T10:02:22.002Z] INFO  REQUEST | {"method":"GET","url":"/admin/codigos","ip":"127.0.0.1"}
+[2025-12-07T10:02:24.740Z] INFO  REQUEST | {"method":"GET","url":"/admin/codigos","ip":"127.0.0.1"}
+[2025-12-07T10:07:23.607Z] INFO  REQUEST | {"method":"GET","url":"/admin/codigos","ip":"127.0.0.1"}
+[2025-12-07T10:09:37.524Z] INFO  API escuchando en http://0.0.0.0:3001 | {"port":3001}
+[2025-12-07T10:16:07.895Z] INFO  REQUEST | {"method":"GET","url":"/admin/codigos","ip":"127.0.0.1"}
+[2025-12-07T10:26:14.521Z] INFO  REQUEST | {"method":"GET","url":"/admin/codigos","ip":"192.168.100.90"}
+[2025-12-07T10:26:51.125Z] INFO  REQUEST | {"method":"GET","url":"/admin/evaluaciones","ip":"192.168.100.90"}
+[2025-12-07T10:26:51.946Z] INFO  REQUEST | {"method":"GET","url":"/admin/codigos","ip":"192.168.100.90"}
+[2025-12-07T10:26:52.788Z] INFO  REQUEST | {"method":"GET","url":"/admin/evaluaciones-por-evaluado","ip":"192.168.100.90"}
+[2025-12-07T10:29:19.877Z] INFO  REQUEST | {"method":"GET","url":"/admin/codigos","ip":"192.168.100.90"}
+[2025-12-07T10:36:47.375Z] INFO  API escuchando en http://0.0.0.0:3001 | {"port":3001}
+[2025-12-07T10:38:38.151Z] INFO  REQUEST | {"method":"GET","url":"/admin/codigos","ip":"192.168.100.90"}
+[2025-12-07T10:38:42.029Z] INFO  REQUEST | {"method":"GET","url":"/admin/evaluaciones","ip":"192.168.100.90"}
+[2025-12-07T10:38:43.598Z] INFO  REQUEST | {"method":"GET","url":"/admin/evaluaciones-por-evaluado","ip":"192.168.100.90"}
+[2025-12-07T10:39:52.578Z] INFO  API escuchando en http://0.0.0.0:3001 | {"port":3001}
+[2025-12-07T11:02:38.682Z] INFO  API escuchando en http://0.0.0.0:3001 | {"port":3001}
+[2025-12-07T11:03:16.881Z] INFO  REQUEST | {"method":"POST","url":"/auth/login","ip":"127.0.0.1"}
+[2025-12-07T11:03:16.891Z] INFO  Login exitoso | {"endpoint":"/auth/login","username":"admin"}
+[2025-12-07T11:03:19.414Z] INFO  REQUEST | {"method":"GET","url":"/admin/codigos","ip":"127.0.0.1","hasAuth":true}
+[2025-12-07T11:03:46.679Z] INFO  API escuchando en http://0.0.0.0:3001 | {"port":3001}
+[2025-12-07T11:03:48.523Z] INFO  REQUEST | {"method":"POST","url":"/auth/login","ip":"127.0.0.1"}
+[2025-12-07T11:03:48.532Z] INFO  Login exitoso | {"endpoint":"/auth/login","username":"admin"}
+[2025-12-07T11:07:09.313Z] INFO  REQUEST | {"method":"POST","url":"/auth/login","ip":"127.0.0.1"}
+[2025-12-07T11:07:09.314Z] INFO  Login exitoso | {"endpoint":"/auth/login","username":"admin"}
+[2025-12-07T11:07:10.879Z] INFO  REQUEST | {"method":"GET","url":"/admin/codigos","ip":"127.0.0.1"}
+[2025-12-07T11:07:10.880Z] WARN  Token de autenticación requerido | {"code":401,"endpoint":"/admin/codigos"}
+[2025-12-07T11:07:16.455Z] INFO  REQUEST | {"method":"GET","url":"/admin/evaluaciones","ip":"127.0.0.1"}
+[2025-12-07T11:07:16.456Z] WARN  Token de autenticación requerido | {"code":401,"endpoint":"/admin/evaluaciones"}
+[2025-12-07T11:07:17.841Z] INFO  REQUEST | {"method":"GET","url":"/admin/evaluaciones-por-evaluado","ip":"127.0.0.1"}
+[2025-12-07T11:07:17.842Z] WARN  Token de autenticación requerido | {"code":401,"endpoint":"/admin/evaluaciones-por-evaluado"}
+[2025-12-07T11:07:23.676Z] INFO  REQUEST | {"method":"POST","url":"/auth/login","ip":"127.0.0.1"}
+[2025-12-07T11:07:23.677Z] INFO  Login exitoso | {"endpoint":"/auth/login","username":"admin"}
+[2025-12-07T11:07:24.910Z] INFO  REQUEST | {"method":"GET","url":"/admin/codigos","ip":"127.0.0.1"}
+[2025-12-07T11:07:24.911Z] WARN  Token de autenticación requerido | {"code":401,"endpoint":"/admin/codigos"}
+[2025-12-07T11:07:26.823Z] INFO  REQUEST | {"method":"GET","url":"/admin/evaluaciones","ip":"127.0.0.1"}
+[2025-12-07T11:07:26.823Z] WARN  Token de autenticación requerido | {"code":401,"endpoint":"/admin/evaluaciones"}
+[2025-12-07T11:07:27.898Z] INFO  REQUEST | {"method":"GET","url":"/admin/evaluaciones-por-evaluado","ip":"127.0.0.1"}
+[2025-12-07T11:07:27.898Z] WARN  Token de autenticación requerido | {"code":401,"endpoint":"/admin/evaluaciones-por-evaluado"}
+[2025-12-07T11:07:29.802Z] INFO  REQUEST | {"method":"GET","url":"/admin/codigos","ip":"127.0.0.1"}
+[2025-12-07T11:07:29.802Z] WARN  Token de autenticación requerido | {"code":401,"endpoint":"/admin/codigos"}
+[2025-12-07T11:09:00.495Z] INFO  REQUEST | {"method":"GET","url":"/admin/codigos","ip":"127.0.0.1"}
+[2025-12-07T11:09:00.496Z] WARN  Token de autenticación requerido | {"code":401,"endpoint":"/admin/codigos"}
+[2025-12-07T11:09:37.185Z] INFO  REQUEST | {"method":"GET","url":"/admin/codigos","ip":"127.0.0.1"}
+[2025-12-07T11:09:37.186Z] WARN  Token de autenticación requerido | {"code":401,"endpoint":"/admin/codigos"}
+[2025-12-07T11:10:19.770Z] INFO  REQUEST | {"method":"POST","url":"/auth/login","ip":"127.0.0.1"}
+[2025-12-07T11:10:19.771Z] INFO  Login exitoso | {"endpoint":"/auth/login","username":"admin"}
+[2025-12-07T11:10:21.221Z] INFO  REQUEST | {"method":"GET","url":"/admin/codigos","ip":"127.0.0.1","hasAuth":true}
+[2025-12-07T11:10:24.297Z] INFO  REQUEST | {"method":"GET","url":"/admin/evaluaciones","ip":"127.0.0.1","hasAuth":true}
+[2025-12-07T11:10:25.769Z] INFO  REQUEST | {"method":"GET","url":"/admin/evaluaciones-por-evaluado","ip":"127.0.0.1","hasAuth":true}
+[2025-12-07T11:11:25.462Z] INFO  REQUEST | {"method":"POST","url":"/captura/sesion","ip":"127.0.0.1"}
+[2025-12-07T11:11:25.473Z] WARN  Código no encontrado o inactivo | {"code":404,"endpoint":"/captura/sesion","codigo":"ABC123"}
+[2025-12-07T11:11:26.081Z] INFO  REQUEST | {"method":"POST","url":"/captura/sesion","ip":"127.0.0.1"}
+[2025-12-07T11:11:26.082Z] WARN  Código no encontrado o inactivo | {"code":404,"endpoint":"/captura/sesion","codigo":"ABC123"}
+[2025-12-07T11:11:26.554Z] INFO  REQUEST | {"method":"POST","url":"/captura/sesion","ip":"127.0.0.1"}
+[2025-12-07T11:11:26.555Z] WARN  Código no encontrado o inactivo | {"code":404,"endpoint":"/captura/sesion","codigo":"ABC123"}
+[2025-12-07T11:11:27.071Z] INFO  REQUEST | {"method":"POST","url":"/captura/sesion","ip":"127.0.0.1"}
+[2025-12-07T11:11:27.072Z] WARN  Código no encontrado o inactivo | {"code":404,"endpoint":"/captura/sesion","codigo":"ABC123"}
+[2025-12-07T11:11:27.519Z] INFO  REQUEST | {"method":"POST","url":"/captura/sesion","ip":"127.0.0.1"}
+[2025-12-07T11:11:27.520Z] WARN  Código no encontrado o inactivo | {"code":404,"endpoint":"/captura/sesion","codigo":"ABC123"}
+[2025-12-07T11:11:27.907Z] INFO  REQUEST | {"method":"POST","url":"/captura/sesion","ip":"127.0.0.1"}
+[2025-12-07T11:11:27.908Z] WARN  Código no encontrado o inactivo | {"code":404,"endpoint":"/captura/sesion","codigo":"ABC123"}
+[2025-12-07T11:11:28.349Z] INFO  REQUEST | {"method":"POST","url":"/captura/sesion","ip":"127.0.0.1"}
+[2025-12-07T11:11:28.350Z] WARN  Código no encontrado o inactivo | {"code":404,"endpoint":"/captura/sesion","codigo":"ABC123"}
+[2025-12-07T11:11:28.645Z] INFO  REQUEST | {"method":"POST","url":"/captura/sesion","ip":"127.0.0.1"}
+[2025-12-07T11:11:28.646Z] WARN  Código no encontrado o inactivo | {"code":404,"endpoint":"/captura/sesion","codigo":"ABC123"}
+[2025-12-07T11:11:28.885Z] INFO  REQUEST | {"method":"POST","url":"/captura/sesion","ip":"127.0.0.1"}
+[2025-12-07T11:11:28.886Z] WARN  Código no encontrado o inactivo | {"code":404,"endpoint":"/captura/sesion","codigo":"ABC123"}
+[2025-12-07T11:15:01.796Z] INFO  REQUEST | {"method":"POST","url":"/auth/login","ip":"127.0.0.1"}
+[2025-12-07T11:15:01.797Z] WARN  Intento de login fallido | {"endpoint":"/auth/login","username":"a"}
+[2025-12-07T11:15:01.797Z] WARN  Credenciales inválidas | {"code":401,"endpoint":"/auth/login"}
+[2025-12-07T11:15:02.682Z] INFO  REQUEST | {"method":"POST","url":"/auth/login","ip":"127.0.0.1"}
+[2025-12-07T11:15:02.682Z] WARN  Intento de login fallido | {"endpoint":"/auth/login","username":"a"}
+[2025-12-07T11:15:02.682Z] WARN  Credenciales inválidas | {"code":401,"endpoint":"/auth/login"}
+[2025-12-07T11:15:34.391Z] INFO  REQUEST | {"method":"POST","url":"/auth/login","ip":"127.0.0.1"}
+[2025-12-07T11:15:34.391Z] WARN  Intento de login fallido | {"endpoint":"/auth/login","username":"a"}
+[2025-12-07T11:15:34.392Z] WARN  Credenciales inválidas | {"code":401,"endpoint":"/auth/login"}
+[2025-12-07T11:15:37.054Z] INFO  REQUEST | {"method":"POST","url":"/auth/login","ip":"127.0.0.1"}
+[2025-12-07T11:15:37.054Z] WARN  Intento de login fallido | {"endpoint":"/auth/login","username":"admin"}
+[2025-12-07T11:15:37.054Z] WARN  Credenciales inválidas | {"code":401,"endpoint":"/auth/login"}
+[2025-12-07T11:15:37.377Z] INFO  REQUEST | {"method":"POST","url":"/auth/login","ip":"127.0.0.1"}
+[2025-12-07T11:15:37.378Z] WARN  Intento de login fallido | {"endpoint":"/auth/login","username":"admin"}
+[2025-12-07T11:15:37.378Z] WARN  Credenciales inválidas | {"code":401,"endpoint":"/auth/login"}
+[2025-12-07T11:15:41.562Z] INFO  REQUEST | {"method":"POST","url":"/auth/login","ip":"127.0.0.1"}
+[2025-12-07T11:15:41.563Z] INFO  Login exitoso | {"endpoint":"/auth/login","username":"admin"}
+[2025-12-07T11:15:42.370Z] INFO  REQUEST | {"method":"GET","url":"/admin/codigos","ip":"127.0.0.1","hasAuth":true}
+[2025-12-07T11:15:58.733Z] INFO  REQUEST | {"method":"POST","url":"/auth/login","ip":"127.0.0.1"}
+[2025-12-07T11:15:59.385Z] INFO  REQUEST | {"method":"POST","url":"/auth/login","ip":"127.0.0.1"}
+[2025-12-07T11:15:59.835Z] INFO  REQUEST | {"method":"POST","url":"/auth/login","ip":"127.0.0.1"}
+[2025-12-07T11:16:00.046Z] INFO  REQUEST | {"method":"POST","url":"/auth/login","ip":"127.0.0.1"}
+[2025-12-07T11:16:13.985Z] INFO  REQUEST | {"method":"POST","url":"/auth/login","ip":"127.0.0.1"}
+[2025-12-07T11:16:14.748Z] INFO  REQUEST | {"method":"POST","url":"/auth/login","ip":"127.0.0.1"}
+[2025-12-07T11:16:15.430Z] INFO  REQUEST | {"method":"POST","url":"/auth/login","ip":"127.0.0.1"}
+[2025-12-07T11:16:15.926Z] INFO  REQUEST | {"method":"POST","url":"/auth/login","ip":"127.0.0.1"}
+[2025-12-07T11:16:16.419Z] INFO  REQUEST | {"method":"POST","url":"/auth/login","ip":"127.0.0.1"}
+[2025-12-07T11:16:24.825Z] INFO  REQUEST | {"method":"POST","url":"/auth/login","ip":"127.0.0.1"}
+[2025-12-07T11:16:25.597Z] INFO  REQUEST | {"method":"POST","url":"/auth/login","ip":"127.0.0.1"}
+[2025-12-07T11:17:58.179Z] INFO  API escuchando en http://0.0.0.0:3001 | {"port":3001}
+[2025-12-07T11:17:58.954Z] INFO  REQUEST | {"method":"POST","url":"/auth/login","ip":"127.0.0.1"}
+[2025-12-07T11:17:58.963Z] INFO  Login exitoso | {"endpoint":"/auth/login","username":"admin"}
+[2025-12-07T11:18:00.352Z] INFO  REQUEST | {"method":"GET","url":"/admin/codigos","ip":"127.0.0.1","hasAuth":true}
+[2025-12-07T11:18:07.202Z] INFO  REQUEST | {"method":"POST","url":"/auth/login","ip":"127.0.0.1"}
+[2025-12-07T11:18:07.203Z] WARN  Intento de login fallido | {"endpoint":"/auth/login","username":"a"}
+[2025-12-07T11:18:07.203Z] WARN  Credenciales inválidas | {"code":401,"endpoint":"/auth/login"}
+[2025-12-07T11:18:09.878Z] INFO  REQUEST | {"method":"POST","url":"/auth/login","ip":"127.0.0.1"}
+[2025-12-07T11:18:09.879Z] WARN  Intento de login fallido | {"endpoint":"/auth/login","username":"a"}
+[2025-12-07T11:18:09.879Z] WARN  Credenciales inválidas | {"code":401,"endpoint":"/auth/login"}
+[2025-12-07T11:21:08.836Z] INFO  REQUEST | {"method":"POST","url":"/auth/login","ip":"127.0.0.1"}
+[2025-12-07T11:21:08.837Z] WARN  Intento de login fallido | {"endpoint":"/auth/login","username":"a"}
+[2025-12-07T11:21:08.838Z] WARN  Credenciales inválidas | {"code":401,"endpoint":"/auth/login"}
+[2025-12-07T18:32:05.848Z] INFO  API escuchando en http://0.0.0.0:3001 | {"port":3001}
+[2025-12-07T18:33:30.839Z] INFO  REQUEST | {"method":"POST","url":"/auth/login","ip":"192.168.100.90"}
+[2025-12-07T18:33:30.853Z] INFO  Login exitoso | {"endpoint":"/auth/login","username":"admin"}
+[2025-12-07T18:33:33.075Z] INFO  REQUEST | {"method":"GET","url":"/admin/codigos","ip":"192.168.100.90","hasAuth":true}
+[2025-12-07T18:33:41.506Z] INFO  REQUEST | {"method":"POST","url":"/auth/login","ip":"192.168.100.90"}
+[2025-12-07T18:33:41.507Z] WARN  Intento de login fallido | {"endpoint":"/auth/login","username":"ne"}
+[2025-12-07T18:33:41.507Z] WARN  Credenciales inválidas | {"code":401,"endpoint":"/auth/login"}
+[2025-12-07T19:51:19.444Z] INFO  REQUEST | {"method":"POST","url":"/auth/login","ip":"127.0.0.1"}
+[2025-12-07T19:51:19.454Z] INFO  Login exitoso | {"endpoint":"/auth/login","username":"admin"}
+[2025-12-07T19:51:22.075Z] INFO  REQUEST | {"method":"GET","url":"/admin/usuarios","ip":"127.0.0.1","hasAuth":true}
+[2025-12-07T19:51:22.076Z] WARN  Ruta no encontrada | {"code":404,"endpoint":"/admin/usuarios","method":"GET"}
+[2025-12-07T19:51:24.249Z] INFO  REQUEST | {"method":"GET","url":"/admin/usuarios","ip":"127.0.0.1","hasAuth":true}
+[2025-12-07T19:51:24.250Z] WARN  Ruta no encontrada | {"code":404,"endpoint":"/admin/usuarios","method":"GET"}
+[2025-12-07T19:51:39.715Z] INFO  Migración: tabla usuarios creada
+[2025-12-07T19:51:39.767Z] INFO  API escuchando en http://0.0.0.0:3001 | {"port":3001}
+[2025-12-07T19:51:42.331Z] INFO  REQUEST | {"method":"GET","url":"/admin/usuarios","ip":"127.0.0.1","hasAuth":true}
+[2025-12-07T19:51:59.247Z] INFO  REQUEST | {"method":"POST","url":"/admin/usuarios","ip":"127.0.0.1","hasAuth":true}
+[2025-12-07T19:51:59.271Z] INFO  Usuario creado | {"endpoint":"/admin/usuarios","id":1,"username":"AdminPrueba"}
+[2025-12-07T19:51:59.280Z] INFO  REQUEST | {"method":"GET","url":"/admin/usuarios","ip":"127.0.0.1","hasAuth":true}
+[2025-12-07T19:52:08.696Z] INFO  REQUEST | {"method":"POST","url":"/admin/usuarios","ip":"127.0.0.1","hasAuth":true}
+[2025-12-07T19:52:08.732Z] INFO  Usuario creado | {"endpoint":"/admin/usuarios","id":2,"username":"admin"}
+[2025-12-07T19:52:08.741Z] INFO  REQUEST | {"method":"GET","url":"/admin/usuarios","ip":"127.0.0.1","hasAuth":true}
+[2025-12-07T19:52:17.042Z] INFO  REQUEST | {"method":"POST","url":"/auth/login","ip":"127.0.0.1"}
+[2025-12-07T19:52:17.049Z] INFO  Login exitoso | {"endpoint":"/auth/login","username":"admin","userId":2}
+[2025-12-07T19:52:19.200Z] INFO  REQUEST | {"method":"GET","url":"/admin/usuarios","ip":"127.0.0.1","hasAuth":true}
+[2025-12-07T19:52:28.809Z] INFO  REQUEST | {"method":"POST","url":"/auth/login","ip":"127.0.0.1"}
+[2025-12-07T19:52:28.811Z] WARN  Intento de login fallido - usuario no encontrado | {"endpoint":"/auth/login","username":"adminPrueba"}
+[2025-12-07T19:52:28.811Z] WARN  Credenciales inválidas | {"code":401,"endpoint":"/auth/login"}
+[2025-12-07T19:52:32.293Z] INFO  REQUEST | {"method":"POST","url":"/auth/login","ip":"127.0.0.1"}
+[2025-12-07T19:52:32.298Z] INFO  Login exitoso | {"endpoint":"/auth/login","username":"admin","userId":2}
+[2025-12-07T19:52:34.332Z] INFO  REQUEST | {"method":"GET","url":"/admin/usuarios","ip":"127.0.0.1","hasAuth":true}
+[2025-12-07T19:52:45.148Z] INFO  REQUEST | {"method":"POST","url":"/auth/login","ip":"127.0.0.1"}
+[2025-12-07T19:52:45.151Z] INFO  Login exitoso | {"endpoint":"/auth/login","username":"AdminPrueba","userId":1}
+[2025-12-07T19:52:47.473Z] INFO  REQUEST | {"method":"GET","url":"/admin/codigos","ip":"127.0.0.1","hasAuth":true}
+[2025-12-07T19:54:22.216Z] INFO  REQUEST | {"method":"POST","url":"/auth/login","ip":"127.0.0.1"}
+[2025-12-07T19:54:22.219Z] INFO  Login exitoso | {"endpoint":"/auth/login","username":"admin","userId":2}

@@ -1,0 +1,101 @@
+# Learn more https://docs.github.com/en/get-started/getting-started-with-git/ignoring-files
+
+# ============================================
+# DEPENDENCIAS
+# ============================================
+node_modules/
+package-lock.json
+
+# ============================================
+# EXPO
+# ============================================
+.expo/
+dist/
+web-build/
+expo-env.d.ts
+.expo-shared/
+
+# ============================================
+# NATIVE (iOS/Android)
+# ============================================
+/ios
+/android
+.kotlin/
+*.orig.*
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+
+# ============================================
+# METRO BUNDLER
+# ============================================
+.metro-health-check*
+.metro/
+
+# ============================================
+# DEBUG Y LOGS
+# ============================================
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+.pnpm-debug.log*
+
+# ============================================
+# ARCHIVOS DEL SISTEMA
+# ============================================
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+*.swp
+*.swo
+*~
+
+# ============================================
+# CERTIFICADOS Y LLAVES
+# ============================================
+*.pem
+*.key
+*.cert
+
+# ============================================
+# VARIABLES DE ENTORNO
+# ============================================
+.env
+.env.local
+.env.*.local
+.env.production
+.env.development
+
+# ============================================
+# TYPESCRIPT
+# ============================================
+*.tsbuildinfo
+
+# ============================================
+# IDEs
+# ============================================
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+
+# ============================================
+# REPOSITORIOS GIT ANIDADOS (IMPORTANTE)
+# ============================================
+.git/
+.gitignore.local
+
+# ============================================
+# TEMPORALES
+# ============================================
+tmp/
+temp/
+*.tmp
+.cache/

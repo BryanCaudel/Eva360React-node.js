@@ -1,7 +1,10 @@
 import React from "react";
 import { View, Text, TouchableOpacity, ScrollView } from "react-native";
+import useAuth from "../hooks/useAuth";
 
 export default function DashboardScreen({ navigation }) {
+  const { logout } = useAuth();
+
   const Card = ({ title, subtitle, onPress }) => (
     <TouchableOpacity
       onPress={onPress}
@@ -20,6 +23,7 @@ export default function DashboardScreen({ navigation }) {
   );
 
   const onLogout = () => {
+    logout();
     navigation.reset({
       index: 0,
       routes: [{ name: "Login" }],
@@ -69,6 +73,12 @@ export default function DashboardScreen({ navigation }) {
         title="Promedio por evaluado (acumulado)"
         subtitle="Promedios por área sumando todas las sesiones del evaluado."
         onPress={() => navigation.navigate("EvaluacionesAcumuladas")}
+      />
+
+      <Card
+        title="Usuarios"
+        subtitle="Gestiona los usuarios del sistema (crear, editar, eliminar)."
+        onPress={() => navigation.navigate("Usuarios")}
       />
     </ScrollView>
   );

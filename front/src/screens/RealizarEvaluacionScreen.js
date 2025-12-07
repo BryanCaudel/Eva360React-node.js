@@ -7,22 +7,27 @@ export default function RealizarEvaluacionScreen({ route, navigation }) {
   const [values, setValues] = useState({});
   const [submitting, setSubmitting] = useState(false);
 
+  // Calcula el total de preguntas respondidas
   const totalRespondidas = useMemo(() => Object.keys(values).length, [values]);
   const totalPreguntas = (preguntas || []).length;
+  
+  // Verifica que todas las preguntas tengan respuesta antes de permitir enviar
   const todasRespondidas = useMemo(() => {
     if (!preguntas || preguntas.length === 0) return false;
     return preguntas.every(p => values[p.id] !== undefined);
   }, [preguntas, values]);
 
+  // Guarda la respuesta seleccionada para una pregunta
   const onSelect = (pregunta_id, valor) => {
     setValues((prev) => ({ ...prev, [pregunta_id]: valor }));
   };
 
+  // Navega de vuelta a la pantalla de login
   const navegarALogin = () => {
     navigation.reset({ index: 0, routes: [{ name: "Login" }] });
   };
 
-  // si falla el guardado muestra un mensaje de error
+  // Valida que todas las preguntas estén respondidas y envía las respuestas
   const onSubmit = async () => {
     if (!token_sesion) {
       if (Platform.OS === "web") {
@@ -33,7 +38,7 @@ export default function RealizarEvaluacionScreen({ route, navigation }) {
       return;
     }
 
-    // Validar que todas las preguntas estén respondidas
+    // Validación: verifica que todas las preguntas tengan respuesta
     const preguntasIds = (preguntas || []).map(p => p.id);
     const preguntasSinResponder = preguntasIds.filter(id => !values[id]);
     
@@ -78,19 +83,43 @@ export default function RealizarEvaluacionScreen({ route, navigation }) {
       await finalizarSesion(token_sesion);
 
       if (Platform.OS === "web") {
-        alert("Gracias: respuestas enviadas correctamente.");
+        alert("¡Gracias! Tus respuestas se enviaron correctamente.");
         navegarALogin();
       } else {
-        Alert.alert("Gracias", "Respuestas enviadas correctamente.", [
+        Alert.alert("¡Gracias!", "Tus respuestas se enviaron correctamente. La evaluación ha sido registrada.", [
           { text: "OK", onPress: navegarALogin },
         ]);
       }
     } catch (e) {
-      const msg = e?.message || "No se pudo enviar la evaluación.";
+      // Mensajes de error específicos
+      let mensajeError = "No se pudo enviar la evaluación. Intenta nuevamente.";
+      let tituloError = "Error al enviar";
+      
+      if (e?.message) {
+        if (e.message.includes("Faltan") || e.message.includes("pregunta(s) sin responder")) {
+          tituloError = "Preguntas incompletas";
+          mensajeError = e.message;
+        } else if (e.message.includes("Sesión finalizada") || e.message.includes("409")) {
+          tituloError = "Sesión finalizada";
+          mensajeError = "Esta evaluación ya fue enviada anteriormente. No se puede modificar.";
+        } else if (e.message.includes("Sesión no encontrada") || e.message.includes("404")) {
+          tituloError = "Sesión inválida";
+          mensajeError = "La sesión de evaluación no es válida o ha expirado. Por favor inicia una nueva evaluación.";
+        } else if (e.message.includes("Timeout") || e.message.includes("no respondió")) {
+          tituloError = "Error de conexión";
+          mensajeError = "El servidor no está respondiendo. Verifica tu conexión a internet antes de intentar nuevamente.";
+        } else if (e.message.includes("conectar") || e.message.includes("conexión")) {
+          tituloError = "Error de conexión";
+          mensajeError = "No se pudo conectar con el servidor. Verifica tu conexión a internet.";
+        } else {
+          mensajeError = e.message;
+        }
+      }
+      
       if (Platform.OS === "web") {
-        alert(`Error: ${msg}`);
+        alert(`${tituloError}: ${mensajeError}`);
       } else {
-        Alert.alert("Error", msg);
+        Alert.alert(tituloError, mensajeError);
       }
     } finally {
       setSubmitting(false);
@@ -105,6 +134,7 @@ export default function RealizarEvaluacionScreen({ route, navigation }) {
       </Text>
       <Text style={{ color: "#6b7280" }}>Responde (1 = bajo, 5 = alto)</Text>
 
+      {/* Renderiza cada pregunta con indicador visual de estado (respondida/no respondida) */}
       {(preguntas || []).map((p) => {
         const estaRespondida = values[p.id] !== undefined;
         return (
@@ -127,6 +157,7 @@ export default function RealizarEvaluacionScreen({ route, navigation }) {
                 <Text style={{ color: "#ef4444", fontSize: 12, fontWeight: "600" }}>⚠ Sin responder</Text>
               )}
             </View>
+          {/* Botones de escala de respuesta (1-5): cambian de color cuando están seleccionados */}
           <View style={{ flexDirection: "row", gap: 8 }}>
             {[1, 2, 3, 4, 5].map((v) => {
               const active = values[p.id] === v;
@@ -152,6 +183,7 @@ export default function RealizarEvaluacionScreen({ route, navigation }) {
         );
       })}
 
+      {/* Botón de envío: solo se habilita cuando todas las preguntas están respondidas */}
       <TouchableOpacity
         onPress={onSubmit}
         disabled={submitting || !todasRespondidas}

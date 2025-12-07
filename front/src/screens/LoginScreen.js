@@ -1,15 +1,58 @@
 import React, { useState } from "react";
-import { View, Text, TextInput, TouchableOpacity, Alert } from "react-native";
+import { View, Text, TextInput, TouchableOpacity, Alert, ActivityIndicator, Platform } from "react-native";
+import useAuth from "../hooks/useAuth";
 
 export default function LoginScreen({ navigation }) {
-  const [user, setUser] = useState("admin");
-  const [pass, setPass] = useState("admin1");
+  const [user, setUser] = useState("");
+  const [pass, setPass] = useState("");
+  const { login, loading } = useAuth();
 
-  const onLogin = () => {
-    if (user === "admin" && pass === "admin1") {
+  // Valida las credenciales con el backend usando el hook de autenticación
+  const onLogin = async () => {
+    if (!user.trim() || !pass.trim()) {
+      const mensaje = "Por favor ingresa tu usuario y contraseña para continuar.";
+      if (Platform.OS === "web") {
+        alert(mensaje);
+      } else {
+        Alert.alert("Campos requeridos", mensaje);
+      }
+      return;
+    }
+
+    const result = await login(user.trim(), pass);
+    
+    if (result.ok) {
+      // El hook ya guardó el token, solo navegar
       navigation.replace("Dashboard");
     } else {
-      Alert.alert("Credenciales inválidas", "Usuario o contraseña incorrectos.");
+      // Mensajes de error específicos según el tipo de error
+      let mensajeError = "Usuario o contraseña incorrectos. Verifica tus credenciales e intenta nuevamente.";
+      let tituloError = "Error al iniciar sesión";
+      
+      if (result.error) {
+        // Error de rate limiting (demasiados intentos)
+        if (result.error.includes("Demasiados intentos") || result.error.includes("429")) {
+          tituloError = "Demasiados intentos";
+          mensajeError = "Has realizado demasiados intentos de login. Por favor espera 15 minutos antes de intentar nuevamente.";
+        } else if (result.error.includes("Credenciales inválidas") || result.error.includes("401")) {
+          tituloError = "Credenciales incorrectas";
+          mensajeError = "Usuario o contraseña incorrectos. Verifica tus credenciales e intenta nuevamente.";
+        } else if (result.error.includes("Timeout") || result.error.includes("no respondió")) {
+          tituloError = "Error de conexión";
+          mensajeError = "El servidor no está respondiendo. Verifica tu conexión a internet o que el servidor esté encendido.";
+        } else if (result.error.includes("conectar") || result.error.includes("conexión")) {
+          tituloError = "Error de conexión";
+          mensajeError = "No se pudo conectar con el servidor. Verifica tu conexión a internet.";
+        } else {
+          mensajeError = result.error;
+        }
+      }
+      
+      if (Platform.OS === "web") {
+        alert(`${tituloError}: ${mensajeError}`);
+      } else {
+        Alert.alert(tituloError, mensajeError);
+      }
     }
   };
 
@@ -19,6 +62,7 @@ export default function LoginScreen({ navigation }) {
 
       <Text style={{ fontSize: 16, color: "#374151" }}>Iniciar sesión</Text>
 
+      {/* Campo de entrada para el usuario: estilos con bordes redondeados y fondo blanco */}
       <TextInput
         placeholder="correo@demo.com"
         value={user}
@@ -29,6 +73,7 @@ export default function LoginScreen({ navigation }) {
           paddingHorizontal: 12, paddingVertical: 10, backgroundColor: "#fff",
         }}
       />
+      {/* Campo de entrada para la contraseña: oculta el texto con secureTextEntry */}
       <TextInput
         placeholder="••••••••"
         value={pass}
@@ -40,17 +85,28 @@ export default function LoginScreen({ navigation }) {
         }}
       />
 
+      {/* Botón principal de login: color azul (#2563eb) */}
       <TouchableOpacity
         onPress={onLogin}
+        disabled={loading}
         style={{
-          backgroundColor: "#2563eb", paddingVertical: 12, borderRadius: 10, alignItems: "center",
+          backgroundColor: loading ? "#9ca3af" : "#2563eb", 
+          paddingVertical: 12, 
+          borderRadius: 10, 
+          alignItems: "center",
+          opacity: loading ? 0.6 : 1,
         }}
       >
-        <Text style={{ color: "white", fontWeight: "700" }}>Entrar</Text>
+        {loading ? (
+          <ActivityIndicator color="#fff" />
+        ) : (
+          <Text style={{ color: "white", fontWeight: "700" }}>Entrar</Text>
+        )}
       </TouchableOpacity>
 
       <View style={{ height: 1, backgroundColor: "#e5e7eb", marginVertical: 8 }} />
 
+      {/* Botón alternativo para realizar evaluación sin login */}
       <TouchableOpacity
         onPress={() => navigation.navigate("IngresarCodigo")}
         style={{

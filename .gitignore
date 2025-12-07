@@ -1,0 +1,105 @@
+# ============================================
+# REPOSITORIOS GIT ANIDADOS - PREVENCIÓN CRÍTICA
+# ============================================
+# Ignorar cualquier carpeta .git dentro de subcarpetas
+front/.git/
+back/.git/
+**/.git/
+
+# ============================================
+# NODE MODULES (en todas las carpetas)
+# ============================================
+node_modules/
+front/node_modules/
+back/node_modules/
+**/node_modules/
+
+# ============================================
+# BASE DE DATOS Y ARCHIVOS SENSIBLES
+# ============================================
+# Backend
+back/*.db
+back/*.db-shm
+back/*.db-wal
+back/.env
+back/.env.local
+back/.env.*.local
+back/logs/
+back/*.log
+
+# ============================================
+# EXPO / FRONTEND
+# ============================================
+front/.expo/
+front/dist/
+front/web-build/
+front/expo-env.d.ts
+front/.metro-health-check*
+front/ios/
+front/android/
+
+# ============================================
+# ARCHIVOS DEL SISTEMA
+# ============================================
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+*.swp
+*.swo
+*~
+
+# ============================================
+# IDEs
+# ============================================
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+
+# ============================================
+# LOGS Y TEMPORALES
+# ============================================
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+.pnpm-debug.log*
+
+# ============================================
+# BUILD Y DIST
+# ============================================
+dist/
+build/
+*.tsbuildinfo
+
+# ============================================
+# CERTIFICADOS Y LLAVES
+# ============================================
+*.pem
+*.p8
+*.p12
+*.key
+*.mobileprovision
+*.jks
+*.orig.*
+
+# ============================================
+# ENVIRONMENT VARIABLES
+# ============================================
+.env
+.env.local
+.env.*.local
+.env.production
+.env.development
+
+# ============================================
+# PACKAGE LOCKS (opcional - descomenta si quieres ignorarlos)
+# ============================================
+# package-lock.json
+# yarn.lock
+# pnpm-lock.yaml

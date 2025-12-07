@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback } from "react";
-import { View, Text, FlatList, TouchableOpacity, ActivityIndicator } from "react-native";
+import { View, Text, FlatList, TouchableOpacity, ActivityIndicator, Alert, Platform } from "react-native";
 import { listarEvaluaciones } from "../api";
 
 function Pill({ label, value }) {
@@ -21,15 +21,37 @@ export default function EvaluacionesScreen({ navigation }) {
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState("");
 
-
   const load = async () => {
-    setError(""); setLoading(true);
+    setError(""); 
+    setLoading(true);
     try {
       const data = await listarEvaluaciones();
       setItems(Array.isArray(data) ? data : []);
     } catch (e) {
-      setError(e.message || "Error cargando evaluaciones");
-    } finally { setLoading(false); }
+      // Mensajes de error específicos
+      let mensajeError = "No se pudieron cargar las evaluaciones. Intenta nuevamente.";
+      
+      if (e.message) {
+        if (e.message.includes("Token") || e.message.includes("autenticación") || e.message.includes("401")) {
+          mensajeError = "Tu sesión ha expirado. Por favor inicia sesión nuevamente.";
+        } else if (e.message.includes("Timeout") || e.message.includes("no respondió")) {
+          mensajeError = "El servidor no está respondiendo. Verifica tu conexión a internet.";
+        } else if (e.message.includes("conectar") || e.message.includes("conexión")) {
+          mensajeError = "No se pudo conectar con el servidor. Verifica tu conexión a internet.";
+        } else {
+          mensajeError = e.message;
+        }
+      }
+      
+      setError(mensajeError);
+      if (Platform.OS === "web") {
+        alert(`Error al cargar evaluaciones: ${mensajeError}`);
+      } else {
+        Alert.alert("Error al cargar evaluaciones", mensajeError);
+      }
+    } finally { 
+      setLoading(false); 
+    }
   };
 
   const onRefresh = useCallback(async () => {
@@ -38,8 +60,25 @@ export default function EvaluacionesScreen({ navigation }) {
       const data = await listarEvaluaciones();
       setItems(Array.isArray(data) ? data : []);
     } catch (e) {
-      setError(e.message || "Error cargando evaluaciones");
-    } finally { setRefreshing(false); }
+      // Mensajes de error específicos
+      let mensajeError = "No se pudieron cargar las evaluaciones. Intenta nuevamente.";
+      
+      if (e.message) {
+        if (e.message.includes("Token") || e.message.includes("autenticación") || e.message.includes("401")) {
+          mensajeError = "Tu sesión ha expirado. Por favor inicia sesión nuevamente.";
+        } else if (e.message.includes("Timeout") || e.message.includes("no respondió")) {
+          mensajeError = "El servidor no está respondiendo. Verifica tu conexión a internet.";
+        } else if (e.message.includes("conectar") || e.message.includes("conexión")) {
+          mensajeError = "No se pudo conectar con el servidor. Verifica tu conexión a internet.";
+        } else {
+          mensajeError = e.message;
+        }
+      }
+      
+      setError(mensajeError);
+    } finally { 
+      setRefreshing(false); 
+    }
   }, []);
 
   useEffect(() => { load(); }, []);

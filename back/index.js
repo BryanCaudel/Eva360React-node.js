@@ -3,9 +3,23 @@ import Database from "better-sqlite3";
 import crypto from "crypto";
 import fs from "fs";
 import cors from "cors";
+import helmet from "helmet";
+import rateLimit from "express-rate-limit";
+import jwt from "jsonwebtoken";
+import bcrypt from "bcryptjs";
+import { body, param, validationResult } from "express-validator";
 
 const PORT = Number(process.env.PORT || 3001);
 const DB_FILE = process.env.DB_FILE || "./data.db";
+
+// Configuración de seguridad
+const JWT_SECRET = process.env.JWT_SECRET || "eva360-secret-key-change-in-production";
+const JWT_EXPIRES_IN = "8h";
+
+// Configuración de CORS: en desarrollo permite cualquier origen, en producción se puede restringir
+const ALLOWED_ORIGINS = process.env.ALLOWED_ORIGINS 
+  ? process.env.ALLOWED_ORIGINS.split(",").map(o => o.trim())
+  : null; // null = permitir todos (desarrollo)
 
 
 const LOG_DIR = process.env.LOG_DIR || "./logs";
@@ -27,9 +41,24 @@ function writeLog(line) {
   }
 }
 
+// Función para sanitizar datos sensibles antes de loggear
+function sanitizeForLog(obj) {
+  if (!obj || typeof obj !== "object") return obj;
+  const sensitive = ["password", "token_sesion", "token", "authorization"];
+  const sanitized = { ...obj };
+  for (const key in sanitized) {
+    if (sensitive.some(s => key.toLowerCase().includes(s))) {
+      sanitized[key] = "[REDACTED]";
+    } else if (typeof sanitized[key] === "object" && sanitized[key] !== null) {
+      sanitized[key] = sanitizeForLog(sanitized[key]);
+    }
+  }
+  return sanitized;
+}
+
 function logInfo(msg, meta = null) {
   if (meta) {
-    writeLog(`INFO  ${msg} | ${JSON.stringify(meta)}`);
+    writeLog(`INFO  ${msg} | ${JSON.stringify(sanitizeForLog(meta))}`);
   } else {
     writeLog(`INFO  ${msg}`);
   }
@@ -37,7 +66,7 @@ function logInfo(msg, meta = null) {
 
 function logWarn(msg, meta = null) {
   if (meta) {
-    writeLog(`WARN  ${msg} | ${JSON.stringify(meta)}`);
+    writeLog(`WARN  ${msg} | ${JSON.stringify(sanitizeForLog(meta))}`);
   } else {
     writeLog(`WARN  ${msg}`);
   }
@@ -47,17 +76,19 @@ function logError(msg, meta = null) {
   if (meta instanceof Error) {
     writeLog(`ERROR ${msg} | ${meta.message} | ${meta.stack}`);
   } else if (meta) {
-    writeLog(`ERROR ${msg} | ${JSON.stringify(meta)}`);
+    writeLog(`ERROR ${msg} | ${JSON.stringify(sanitizeForLog(meta))}`);
   } else {
     writeLog(`ERROR ${msg}`);
   }
 }
 
 
+// Inicialización de la base de datos SQLite
 const firstRun = !fs.existsSync(DB_FILE);
 const db = new Database(DB_FILE);
 db.pragma("foreign_keys = ON");
 
+// Crea las tablas y datos iniciales si es la primera vez que se ejecuta
 if (firstRun) {
   db.exec(`
     CREATE TABLE empresas (id INTEGER PRIMARY KEY AUTOINCREMENT, nombre TEXT NOT NULL);
@@ -74,7 +105,6 @@ if (firstRun) {
       nombre TEXT NOT NULL
     );
 
-    /* Incluye evaluado_nombre */
     CREATE TABLE encuesta_equipo (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       encuesta_id INTEGER NOT NULL,
@@ -114,6 +144,15 @@ if (firstRun) {
       FOREIGN KEY (pregunta_id) REFERENCES preguntas(id)
     );
 
+    CREATE TABLE usuarios (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      username TEXT NOT NULL UNIQUE,
+      password_hash TEXT NOT NULL,
+      activo INTEGER NOT NULL DEFAULT 1,
+      creado_en TEXT NOT NULL DEFAULT (datetime('now')),
+      actualizado_en TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+
     INSERT INTO empresas (nombre) VALUES ('Empresa Demo');
     INSERT INTO equipos (empresa_id, nombre) VALUES (1, 'Equipo General');
     INSERT INTO encuestas (nombre) VALUES ('Encuesta General Q4');
@@ -138,28 +177,86 @@ if (firstRun) {
   }
 })();
 
+// Migración: Crear tabla de usuarios si no existe
+(function ensureUsuariosTable() {
+  try {
+    const tables = db.prepare(`SELECT name FROM sqlite_master WHERE type='table' AND name='usuarios'`).get();
+    if (!tables) {
+      db.exec(`
+        CREATE TABLE usuarios (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          username TEXT NOT NULL UNIQUE,
+          password_hash TEXT NOT NULL,
+          activo INTEGER NOT NULL DEFAULT 1,
+          creado_en TEXT NOT NULL DEFAULT (datetime('now')),
+          actualizado_en TEXT NOT NULL DEFAULT (datetime('now'))
+        );
+      `);
+      logInfo("Migración: tabla usuarios creada");
+    }
+  } catch (e) {
+    logError("Error en migración de usuarios", e);
+  }
+})();
 
+
+// Configuración de Express
 const app = express();
-app.use(cors());
-app.options("*", cors());
+
+// Helmet: configuración de headers de seguridad
+app.use(helmet());
+
+// CORS: configuración según entorno
+const corsOptions = {
+  origin: ALLOWED_ORIGINS || true, // true = permitir todos (desarrollo)
+  credentials: true,
+  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization"],
+};
+app.use(cors(corsOptions));
+app.options("*", cors(corsOptions));
+
 app.use(express.json());
 
-// Normalizar URL
+// Normaliza las URLs eliminando barras dobles
 app.use((req, _res, next) => {
   req.url = req.url.replace(/\/{2,}/g, "/");
   next();
 });
 
-// LOGS
+// Rate limiting para login
+const loginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutos
+  max: 10, // máximo 10 intentos por IP
+  message: "Demasiados intentos de login, intenta de nuevo en 15 minutos",
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+// Rate limiting general para endpoints de captura y admin
+const apiLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutos
+  max: 100, // máximo 100 requests por IP
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+// Middleware de logging: registra todas las peticiones
 app.use((req, _res, next) => {
-  logInfo("REQUEST", {
+  const logData = {
     method: req.method,
     url: req.url,
     ip: req.ip,
-  });
+  };
+  // No loggear headers de autorización
+  if (req.headers.authorization) {
+    logData.hasAuth = true;
+  }
+  logInfo("REQUEST", logData);
   next();
 });
 
+// Función helper para enviar respuestas de error
 const bad = (res, msg, code = 400, ctx = {}) => {
   const meta = { code, ...ctx };
   if (code >= 500) {
@@ -169,9 +266,46 @@ const bad = (res, msg, code = 400, ctx = {}) => {
   }
   return res.status(code).json({ error: msg });
 };
+
+// Middleware para manejar errores de validación de express-validator
+const handleValidationErrors = (req, res, next) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    const errorMessages = errors.array().map(err => `${err.param}: ${err.msg}`).join(", ");
+    return bad(res, `Errores de validación: ${errorMessages}`, 400, { 
+      endpoint: req.url,
+      errors: errors.array()
+    });
+  }
+  next();
+};
+// Funciones de utilidad para validación
 const isInt = (v) => Number.isInteger(v);
 const notEmptyStr = (s) => typeof s === "string" && s.trim().length > 0;
 
+// Función para hashear contraseñas usando bcrypt
+async function hashPassword(password) {
+  const saltRounds = 10;
+  return await bcrypt.hash(password, saltRounds);
+}
+
+// Función para verificar contraseñas usando bcrypt
+async function verifyPassword(password, hash) {
+  // Si el hash es antiguo (SHA-256, 64 caracteres hex), migrar automáticamente
+  if (hash.length === 64 && /^[a-f0-9]{64}$/i.test(hash)) {
+    // Hash antiguo SHA-256, verificar y migrar
+    const oldHash = crypto.createHash("sha256").update(password).digest("hex");
+    if (oldHash === hash) {
+      // Contraseña correcta, retornar true (se migrará en el próximo login)
+      return true;
+    }
+    return false;
+  }
+  // Hash nuevo bcrypt, verificar normalmente
+  return await bcrypt.compare(password, hash);
+}
+
+// Genera un código único de 6 caracteres (3 letras + 3 números)
 function genCode() {
   const letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
   const nums = "0123456789";
@@ -180,6 +314,7 @@ function genCode() {
   return pick(letters, 3) + pick(nums, 3);
 }
 
+// Asegura que exista una empresa y equipo por defecto en la base de datos
 function ensureDefaultEquipo() {
   let empresa = db.prepare(`SELECT id FROM empresas WHERE nombre='Empresa Demo'`).get();
   if (!empresa) {
@@ -203,14 +338,155 @@ function ensureDefaultEquipo() {
   }
   return equipo.id;
 }
-//verificar que la api este funcionando
+
+// Middleware de autenticación para rutas de administración
+function requireAdmin(req, res, next) {
+  const authHeader = req.headers.authorization;
+  
+  if (!authHeader || !authHeader.startsWith("Bearer ")) {
+    return bad(res, "Token de autenticación requerido", 401, { endpoint: req.url });
+  }
+  
+  const token = authHeader.substring(7); // Remover "Bearer "
+  
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET);
+    // El token es válido, continuar
+    req.user = decoded;
+    next();
+  } catch (err) {
+    if (err.name === "TokenExpiredError") {
+      return bad(res, "Token expirado", 401, { endpoint: req.url });
+    }
+    return bad(res, "Token inválido", 401, { endpoint: req.url });
+  }
+}
+
+// Endpoint: Verifica que el servidor esté funcionando
 app.get("/health", (_req, res) => res.json({ ok: true }));
 
-// Crear sesión usando un codigo 
-app.post("/captura/sesion", (req, res) => {
-  const { codigo } = req.body || {};
-  if (!notEmptyStr(codigo))
-    return bad(res, "Código requerido", 400, { endpoint: "/captura/sesion" });
+// Endpoint: Autenticación de administrador
+app.post(
+  "/auth/login",
+  loginLimiter,
+  [
+    body("username")
+      .trim()
+      .notEmpty().withMessage("username es requerido")
+      .isLength({ min: 1, max: 50 }).withMessage("username debe tener entre 1 y 50 caracteres")
+      .matches(/^[a-zA-Z0-9_]+$/).withMessage("username solo puede contener letras, números y guiones bajos"),
+    body("password")
+      .notEmpty().withMessage("password es requerido")
+      .isLength({ min: 1, max: 200 }).withMessage("password debe tener entre 1 y 200 caracteres"),
+  ],
+  handleValidationErrors,
+  async (req, res) => {
+    const { username, password } = req.body;
+    
+    // Buscar usuario en la base de datos
+    const usuario = db
+      .prepare(`SELECT id, username, password_hash, activo FROM usuarios WHERE username = ?`)
+      .get(username.trim());
+    
+    // Si no existe el usuario, verificar credenciales hardcodeadas (compatibilidad)
+    if (!usuario) {
+      if (username === "admin" && password === "admin1") {
+        const token = jwt.sign(
+          { username: "admin", role: "admin" },
+          JWT_SECRET,
+          { expiresIn: JWT_EXPIRES_IN }
+        );
+        
+        logInfo("Login exitoso (credenciales legacy)", {
+          endpoint: "/auth/login",
+          username: "admin",
+        });
+        
+        return res.json({
+          ok: true,
+          token,
+          expiresIn: JWT_EXPIRES_IN,
+        });
+      }
+      
+      logWarn("Intento de login fallido - usuario no encontrado", {
+        endpoint: "/auth/login",
+        username: username,
+      });
+      
+      return bad(res, "Credenciales inválidas", 401, { endpoint: "/auth/login" });
+    }
+    
+    // Verificar si el usuario está activo
+    if (usuario.activo !== 1) {
+      logWarn("Intento de login fallido - usuario inactivo", {
+        endpoint: "/auth/login",
+        username: username,
+      });
+      
+      return bad(res, "Usuario inactivo", 401, { endpoint: "/auth/login" });
+    }
+    
+    // Verificar contraseña
+    const passwordValid = await verifyPassword(password, usuario.password_hash);
+    if (!passwordValid) {
+      logWarn("Intento de login fallido - contraseña incorrecta", {
+        endpoint: "/auth/login",
+        username: username,
+      });
+      
+      return bad(res, "Credenciales inválidas", 401, { endpoint: "/auth/login" });
+    }
+    
+    // Migrar hash antiguo a bcrypt si es necesario
+    if (usuario.password_hash.length === 64 && /^[a-f0-9]{64}$/i.test(usuario.password_hash)) {
+      try {
+        const newHash = await hashPassword(password);
+        db.prepare(`UPDATE usuarios SET password_hash = ? WHERE id = ?`).run(newHash, usuario.id);
+        logInfo("Hash de contraseña migrado a bcrypt", {
+          endpoint: "/auth/login",
+          userId: usuario.id,
+        });
+      } catch (e) {
+        logError("Error migrando hash de contraseña", { userId: usuario.id, error: e });
+      }
+    }
+    
+    // Generar token
+    const token = jwt.sign(
+      { username: usuario.username, role: "admin", userId: usuario.id },
+      JWT_SECRET,
+      { expiresIn: JWT_EXPIRES_IN }
+    );
+    
+    logInfo("Login exitoso", {
+      endpoint: "/auth/login",
+      username: usuario.username,
+      userId: usuario.id,
+    });
+    
+    return res.json({
+      ok: true,
+      token,
+      expiresIn: JWT_EXPIRES_IN,
+    });
+  }
+);
+
+// Endpoint: Crea una nueva sesión de evaluación usando un código
+app.post(
+  "/captura/sesion",
+  apiLimiter,
+  [
+    body("codigo")
+      .trim()
+      .notEmpty().withMessage("codigo es requerido")
+      .isLength({ min: 1, max: 20 }).withMessage("codigo debe tener entre 1 y 20 caracteres")
+      .matches(/^[A-Z0-9]+$/).withMessage("codigo solo puede contener letras mayúsculas y números"),
+  ],
+  handleValidationErrors,
+  (req, res) => {
+    const { codigo } = req.body;
 
   const ee = db
     .prepare(
@@ -262,15 +538,27 @@ app.post("/captura/sesion", (req, res) => {
   });
 });
 
-// Guardar respuestas 
-app.post("/captura/respuestas", (req, res) => {
-  const { token_sesion, respuestas } = req.body || {};
-  if (!notEmptyStr(token_sesion))
-    return bad(res, "token_sesion requerido", 400, { endpoint: "/captura/respuestas" });
-  if (!Array.isArray(respuestas) || respuestas.length === 0)
-    return bad(res, "respuestas[] requerido", 400, {
-      endpoint: "/captura/respuestas",
-    });
+// Endpoint: Guarda las respuestas de una evaluación (valida que todas las preguntas estén respondidas)
+app.post(
+  "/captura/respuestas",
+  apiLimiter,
+  [
+    body("token_sesion")
+      .trim()
+      .notEmpty().withMessage("token_sesion es requerido")
+      .isLength({ min: 1, max: 200 }).withMessage("token_sesion debe tener entre 1 y 200 caracteres"),
+    body("respuestas")
+      .isArray({ min: 1 }).withMessage("respuestas debe ser un array con al menos un elemento"),
+    body("respuestas.*.pregunta_id")
+      .isInt({ min: 1 }).withMessage("pregunta_id debe ser un número entero mayor a 0")
+      .toInt(),
+    body("respuestas.*.valor")
+      .isInt({ min: 1, max: 5 }).withMessage("valor debe ser un número entre 1 y 5")
+      .toInt(),
+  ],
+  handleValidationErrors,
+  (req, res) => {
+    const { token_sesion, respuestas } = req.body;
 
   for (const r of respuestas) {
     if (!r || !isInt(r.pregunta_id) || !isInt(r.valor) || r.valor < 1 || r.valor > 5) {
@@ -382,11 +670,19 @@ app.post("/captura/respuestas", (req, res) => {
   res.json({ ok: true, inserted, updated });
 });
 
-// Finalizar sesión
-app.post("/captura/finalizar", (req, res) => {
-  const { token_sesion } = req.body || {};
-  if (!notEmptyStr(token_sesion))
-    return bad(res, "token_sesion requerido", 400, { endpoint: "/captura/finalizar" });
+// Endpoint: Finaliza una sesión de evaluación
+app.post(
+  "/captura/finalizar",
+  apiLimiter,
+  [
+    body("token_sesion")
+      .trim()
+      .notEmpty().withMessage("token_sesion es requerido")
+      .isLength({ min: 1, max: 200 }).withMessage("token_sesion debe tener entre 1 y 200 caracteres"),
+  ],
+  handleValidationErrors,
+  (req, res) => {
+    const { token_sesion } = req.body;
 
   const ses = db
     .prepare(`SELECT id, finalizada FROM sesiones_equipo WHERE token_sesion = ?`)
@@ -410,16 +706,31 @@ app.post("/captura/finalizar", (req, res) => {
   res.json({ ok: true, finalizada: true });
 });
 
-// Crear código de evaluacion 
-app.post("/admin/codigos", (req, res) => {
-  let { encuesta_id = 1, evaluado_nombre, codigo } = req.body || {};
-  encuesta_id = Number(encuesta_id);
-  if (!Number.isInteger(encuesta_id) || encuesta_id < 1)
-    return bad(res, "encuesta_id inválido", 400, { endpoint: "/admin/codigos" });
-  if (!evaluado_nombre || !evaluado_nombre.trim())
-    return bad(res, "evaluado_nombre requerido", 400, {
-      endpoint: "/admin/codigos",
-    });
+// Endpoint: Crea un nuevo código de evaluación (genera código único si no se proporciona)
+app.post(
+  "/admin/codigos",
+  requireAdmin,
+  apiLimiter,
+  [
+    body("encuesta_id")
+      .optional()
+      .isInt({ min: 1 }).withMessage("encuesta_id debe ser un número entero mayor a 0")
+      .toInt(),
+    body("evaluado_nombre")
+      .trim()
+      .notEmpty().withMessage("evaluado_nombre es requerido")
+      .isLength({ min: 1, max: 200 }).withMessage("evaluado_nombre debe tener entre 1 y 200 caracteres")
+      .escape(),
+    body("codigo")
+      .optional()
+      .trim()
+      .isLength({ min: 1, max: 20 }).withMessage("codigo debe tener entre 1 y 20 caracteres")
+      .matches(/^[A-Z0-9]+$/).withMessage("codigo solo puede contener letras mayúsculas y números"),
+  ],
+  handleValidationErrors,
+  (req, res) => {
+    let { encuesta_id = 1, evaluado_nombre, codigo } = req.body;
+    encuesta_id = Number(encuesta_id);
 
   const equipo_id = ensureDefaultEquipo();
   const tryInsert = db.prepare(
@@ -429,6 +740,7 @@ app.post("/admin/codigos", (req, res) => {
   `
   );
 
+  // Intenta generar un código único (hasta 10 intentos)
   const desired = codigo && codigo.trim().toUpperCase();
   for (let i = 0; i < 10; i++) {
     const candidate = desired || genCode();
@@ -461,8 +773,8 @@ app.post("/admin/codigos", (req, res) => {
   });
 });
 
-// Listar códigos
-app.get("/admin/codigos", (_req, res) => {
+// Endpoint: Obtiene la lista de todos los códigos de evaluación
+app.get("/admin/codigos", requireAdmin, apiLimiter, (_req, res) => {
   const rows = db
     .prepare(
       `
@@ -476,75 +788,98 @@ app.get("/admin/codigos", (_req, res) => {
   res.json(rows);
 });
 
-// Actualizar código
-app.put("/admin/codigos/:id", (req, res) => {
-  const id = Number(req.params.id);
-  if (!isInt(id) || id < 1)
-    return bad(res, "ID inválido", 400, { endpoint: "/admin/codigos/:id" });
+// Endpoint: Actualiza los datos de un código existente
+app.put(
+  "/admin/codigos/:id",
+  requireAdmin,
+  apiLimiter,
+  [
+    param("id").isInt({ min: 1 }).withMessage("ID debe ser un número entero mayor a 0").toInt(),
+    body("evaluado_nombre")
+      .optional()
+      .trim()
+      .notEmpty().withMessage("evaluado_nombre no puede estar vacío")
+      .isLength({ min: 1, max: 200 }).withMessage("evaluado_nombre debe tener entre 1 y 200 caracteres")
+      .escape(),
+    body("activo")
+      .optional()
+      .isBoolean().withMessage("activo debe ser un valor booleano")
+      .toBoolean(),
+    body("codigo")
+      .optional()
+      .trim()
+      .notEmpty().withMessage("codigo no puede estar vacío")
+      .isLength({ min: 1, max: 20 }).withMessage("codigo debe tener entre 1 y 20 caracteres")
+      .matches(/^[A-Z0-9]+$/).withMessage("codigo solo puede contener letras mayúsculas y números")
+      .customSanitizer(value => value.toUpperCase()),
+  ],
+  handleValidationErrors,
+  (req, res) => {
+    const id = Number(req.params.id);
+    const { evaluado_nombre, activo, codigo } = req.body;
 
-  const { evaluado_nombre, activo, codigo } = req.body || {};
-  
-  // Verificar que existe el código
-  const existing = db.prepare(`SELECT id FROM encuesta_equipo WHERE id = ?`).get(id);
-  if (!existing)
-    return bad(res, "Código no encontrado", 404, { endpoint: "/admin/codigos/:id", id });
+    // Verificar que existe el código
+    const existing = db.prepare(`SELECT id FROM encuesta_equipo WHERE id = ?`).get(id);
+    if (!existing)
+      return bad(res, "Código no encontrado", 404, { endpoint: "/admin/codigos/:id", id });
 
-  const updates = [];
-  const params = [];
+    const updates = [];
+    const params = [];
 
-  if (evaluado_nombre !== undefined) {
-    if (!notEmptyStr(evaluado_nombre))
-      return bad(res, "evaluado_nombre debe ser un string no vacío", 400, { endpoint: "/admin/codigos/:id" });
-    updates.push("evaluado_nombre = ?");
-    params.push(evaluado_nombre.trim());
-  }
+    if (evaluado_nombre !== undefined) {
+      updates.push("evaluado_nombre = ?");
+      params.push(evaluado_nombre.trim());
+    }
 
-  if (activo !== undefined) {
-    if (typeof activo !== "boolean" && activo !== 0 && activo !== 1)
-      return bad(res, "activo debe ser 0 o 1", 400, { endpoint: "/admin/codigos/:id" });
-    updates.push("activo = ?");
-    params.push(activo ? 1 : 0);
-  }
+    if (activo !== undefined) {
+      updates.push("activo = ?");
+      params.push(activo ? 1 : 0);
+    }
 
-  if (codigo !== undefined) {
-    if (!notEmptyStr(codigo))
-      return bad(res, "codigo debe ser un string no vacío", 400, { endpoint: "/admin/codigos/:id" });
-    const codigoUpper = codigo.trim().toUpperCase();
-    // Verificar que no esté duplicado (excepto el mismo registro)
-    const duplicate = db.prepare(`SELECT id FROM encuesta_equipo WHERE codigo = ? AND id != ?`).get(codigoUpper, id);
-    if (duplicate)
-      return bad(res, "Código duplicado", 409, { endpoint: "/admin/codigos/:id", codigo: codigoUpper });
-    updates.push("codigo = ?");
-    params.push(codigoUpper);
-  }
+    if (codigo !== undefined) {
+      const codigoUpper = codigo.trim().toUpperCase();
+      // Verificar que no esté duplicado (excepto el mismo registro)
+      const duplicate = db.prepare(`SELECT id FROM encuesta_equipo WHERE codigo = ? AND id != ?`).get(codigoUpper, id);
+      if (duplicate)
+        return bad(res, "Código duplicado", 409, { endpoint: "/admin/codigos/:id", codigo: codigoUpper });
+      updates.push("codigo = ?");
+      params.push(codigoUpper);
+    }
 
-  if (updates.length === 0)
-    return bad(res, "No hay campos para actualizar", 400, { endpoint: "/admin/codigos/:id" });
+    if (updates.length === 0)
+      return bad(res, "No hay campos para actualizar", 400, { endpoint: "/admin/codigos/:id" });
 
-  params.push(id);
-  const sql = `UPDATE encuesta_equipo SET ${updates.join(", ")} WHERE id = ?`;
-  
-  try {
-    db.prepare(sql).run(...params);
-    
-    const updated = db.prepare(`
+    params.push(id);
+    const sql = `UPDATE encuesta_equipo SET ${updates.join(", ")} WHERE id = ?`;
+
+    try {
+      db.prepare(sql).run(...params);
+
+      const updated = db.prepare(`
       SELECT id, codigo, activo, evaluado_nombre
       FROM encuesta_equipo
       WHERE id = ?
     `).get(id);
-    
-    res.json(updated);
-  } catch (e) {
-    logError("Error actualizando código", { endpoint: "/admin/codigos/:id", id, error: e });
-    return bad(res, "Error actualizando código", 500, { endpoint: "/admin/codigos/:id" });
-  }
-});
 
-// Eliminar código
-app.delete("/admin/codigos/:id", (req, res) => {
-  const id = Number(req.params.id);
-  if (!isInt(id) || id < 1)
-    return bad(res, "ID inválido", 400, { endpoint: "/admin/codigos/:id" });
+      res.json(updated);
+    } catch (e) {
+      logError("Error actualizando código", { endpoint: "/admin/codigos/:id", id, error: e });
+      return bad(res, "Error actualizando código", 500, { endpoint: "/admin/codigos/:id" });
+    }
+  }
+);
+
+// Endpoint: Elimina o desactiva un código (desactiva si tiene sesiones con respuestas, elimina si no)
+app.delete(
+  "/admin/codigos/:id",
+  requireAdmin,
+  apiLimiter,
+  [
+    param("id").isInt({ min: 1 }).withMessage("ID debe ser un número entero mayor a 0"),
+  ],
+  handleValidationErrors,
+  (req, res) => {
+    const id = Number(req.params.id);
 
   const existing = db.prepare(`SELECT id, codigo FROM encuesta_equipo WHERE id = ?`).get(id);
   if (!existing) {
@@ -600,8 +935,8 @@ app.delete("/admin/codigos/:id", (req, res) => {
   }
 });
 
-// Promedios por sesión finalizada 
-app.get("/admin/evaluaciones", (_req, res) => {
+// Endpoint: Obtiene las evaluaciones agrupadas por sesión (promedios por dimensión por sesión)
+app.get("/admin/evaluaciones", requireAdmin, apiLimiter, (_req, res) => {
   const rows = db
     .prepare(
       `
@@ -632,7 +967,8 @@ app.get("/admin/evaluaciones", (_req, res) => {
   res.json(Array.from(map.values()));
 });
 
-app.get("/admin/evaluaciones-por-evaluado", (_req, res) => {
+// Endpoint: Obtiene los promedios acumulados por evaluado (suma todas las sesiones del evaluado)
+app.get("/admin/evaluaciones-por-evaluado", requireAdmin, apiLimiter, (_req, res) => {
   const rows = db
     .prepare(
       `
@@ -668,6 +1004,233 @@ app.get("/admin/evaluaciones-por-evaluado", (_req, res) => {
   res.json(Array.from(map.values()));
 });
 
+// ========== ENDPOINTS CRUD DE USUARIOS ==========
+
+// Endpoint: Obtiene la lista de todos los usuarios
+app.get("/admin/usuarios", requireAdmin, apiLimiter, (_req, res) => {
+  const rows = db
+    .prepare(
+      `
+    SELECT id, username, activo, creado_en, actualizado_en
+    FROM usuarios
+    ORDER BY id DESC
+  `
+    )
+    .all();
+  
+  res.json(rows);
+});
+
+// Endpoint: Crea un nuevo usuario
+app.post(
+  "/admin/usuarios",
+  requireAdmin,
+  apiLimiter,
+  [
+    body("username")
+      .trim()
+      .notEmpty().withMessage("username es requerido")
+      .isLength({ min: 3, max: 50 }).withMessage("username debe tener entre 3 y 50 caracteres")
+      .matches(/^[a-zA-Z0-9_]+$/).withMessage("username solo puede contener letras, números y guiones bajos"),
+    body("password")
+      .notEmpty().withMessage("password es requerido")
+      .isLength({ min: 4, max: 200 }).withMessage("password debe tener entre 4 y 200 caracteres"),
+  ],
+  handleValidationErrors,
+  async (req, res) => {
+    const { username, password } = req.body;
+    
+    const usernameTrimmed = username.trim();
+    const passwordHash = await hashPassword(password);
+    
+    try {
+      const info = db
+        .prepare(
+          `
+        INSERT INTO usuarios (username, password_hash, activo)
+        VALUES (?, ?, 1)
+      `
+        )
+        .run(usernameTrimmed, passwordHash);
+      
+      logInfo("Usuario creado", {
+        endpoint: "/admin/usuarios",
+        id: info.lastInsertRowid,
+        username: usernameTrimmed,
+      });
+      
+      const nuevoUsuario = db
+        .prepare(`SELECT id, username, activo, creado_en, actualizado_en FROM usuarios WHERE id = ?`)
+        .get(info.lastInsertRowid);
+      
+      return res.json(nuevoUsuario);
+    } catch (e) {
+      if (e.message && e.message.includes("UNIQUE constraint failed")) {
+        return bad(res, "El nombre de usuario ya existe", 409, {
+          endpoint: "/admin/usuarios",
+          username: usernameTrimmed,
+        });
+      }
+      
+      logError("Error creando usuario", {
+        endpoint: "/admin/usuarios",
+        error: e,
+      });
+      
+      return bad(res, "Error creando usuario", 500, {
+        endpoint: "/admin/usuarios",
+      });
+    }
+  }
+);
+
+// Endpoint: Actualiza un usuario existente
+app.put(
+  "/admin/usuarios/:id",
+  requireAdmin,
+  apiLimiter,
+  [
+    param("id").isInt({ min: 1 }).withMessage("ID debe ser un número entero mayor a 0"),
+    body("username")
+      .optional()
+      .trim()
+      .notEmpty().withMessage("username no puede estar vacío")
+      .isLength({ min: 3, max: 50 }).withMessage("username debe tener entre 3 y 50 caracteres")
+      .matches(/^[a-zA-Z0-9_]+$/).withMessage("username solo puede contener letras, números y guiones bajos")
+      .customSanitizer(value => value.trim().toLowerCase()),
+    body("password")
+      .optional()
+      .isLength({ min: 4, max: 200 }).withMessage("password debe tener entre 4 y 200 caracteres"),
+    body("activo")
+      .optional()
+      .isBoolean().withMessage("activo debe ser un valor booleano")
+      .toBoolean(),
+  ],
+  handleValidationErrors,
+  async (req, res) => {
+    const id = Number(req.params.id);
+    const { username, password, activo } = req.body;
+    
+    // Verificar que existe el usuario
+    const existing = db.prepare(`SELECT id FROM usuarios WHERE id = ?`).get(id);
+    if (!existing) {
+      return bad(res, "Usuario no encontrado", 404, { endpoint: "/admin/usuarios/:id", id });
+    }
+    
+    const updates = [];
+    const params = [];
+    
+    if (username !== undefined) {
+      const usernameTrimmed = username.trim();
+      // Verificar que no esté duplicado (excepto el mismo registro)
+      const duplicate = db
+        .prepare(`SELECT id FROM usuarios WHERE username = ? AND id != ?`)
+        .get(usernameTrimmed, id);
+      if (duplicate) {
+        return bad(res, "El nombre de usuario ya existe", 409, {
+          endpoint: "/admin/usuarios/:id",
+          username: usernameTrimmed,
+        });
+      }
+      updates.push("username = ?");
+      params.push(usernameTrimmed);
+    }
+    
+    if (password !== undefined && password.trim()) {
+      const passwordHash = await hashPassword(password);
+      updates.push("password_hash = ?");
+      params.push(passwordHash);
+    }
+    
+    if (activo !== undefined) {
+      updates.push("activo = ?");
+      params.push(activo ? 1 : 0);
+    }
+    
+    if (updates.length === 0) {
+      return bad(res, "No hay campos para actualizar", 400, { endpoint: "/admin/usuarios/:id" });
+    }
+    
+    // Actualizar fecha de modificación
+    updates.push("actualizado_en = datetime('now')");
+    
+    params.push(id);
+    const sql = `UPDATE usuarios SET ${updates.join(", ")} WHERE id = ?`;
+    
+    try {
+      db.prepare(sql).run(...params);
+      
+      const updated = db
+        .prepare(
+          `
+        SELECT id, username, activo, creado_en, actualizado_en
+        FROM usuarios
+        WHERE id = ?
+      `
+        )
+        .get(id);
+      
+      logInfo("Usuario actualizado", {
+        endpoint: "/admin/usuarios/:id",
+        id,
+      });
+      
+      res.json(updated);
+    } catch (e) {
+      logError("Error actualizando usuario", { endpoint: "/admin/usuarios/:id", id, error: e });
+      return bad(res, "Error actualizando usuario", 500, { endpoint: "/admin/usuarios/:id" });
+    }
+  }
+);
+
+// Endpoint: Elimina un usuario
+app.delete(
+  "/admin/usuarios/:id",
+  requireAdmin,
+  apiLimiter,
+  [
+    param("id").isInt({ min: 1 }).withMessage("ID debe ser un número entero mayor a 0"),
+  ],
+  handleValidationErrors,
+  (req, res) => {
+    const id = Number(req.params.id);
+    
+    const existing = db.prepare(`SELECT id, username FROM usuarios WHERE id = ?`).get(id);
+    if (!existing) {
+      return bad(res, "Usuario no encontrado", 404, { endpoint: "/admin/usuarios/:id", id });
+    }
+    
+    try {
+      const result = db.prepare(`DELETE FROM usuarios WHERE id = ?`).run(id);
+      
+      if (result.changes === 0) {
+        return bad(res, "No se pudo eliminar el usuario", 500, {
+          endpoint: "/admin/usuarios/:id",
+          id,
+        });
+      }
+      
+      logInfo("Usuario eliminado", {
+        endpoint: "/admin/usuarios/:id",
+        id,
+        username: existing.username,
+      });
+      
+      res.json({ ok: true, eliminado: true });
+    } catch (e) {
+      logError("Error eliminando usuario", {
+        endpoint: "/admin/usuarios/:id",
+        id,
+        error: e.message,
+        stack: e.stack,
+      });
+      return bad(res, `Error eliminando usuario: ${e.message}`, 500, {
+        endpoint: "/admin/usuarios/:id",
+      });
+    }
+  }
+);
+
 app.use((req, res) => {
   bad(res, "Ruta no encontrada", 404, { endpoint: req.url, method: req.method });
 });
@@ -677,12 +1240,8 @@ app.use((err, _req, res, _next) => {
   res.status(500).json({ error: "Error interno del servidor" });
 });
 
-// LOG
-// Escuchar en todas las interfaces (0.0.0.0) para permitir conexiones desde dispositivos móviles
 app.listen(PORT, "0.0.0.0", () => {
   logInfo(`API escuchando en http://0.0.0.0:${PORT}`, { port: PORT });
-  logInfo(`API accesible desde: http://localhost:${PORT}`, { port: PORT });
-  logInfo(`Para dispositivos móviles, usa la IP de tu máquina en la red local`, { port: PORT });
 });
 
 process.on("uncaughtException", (err) => {
