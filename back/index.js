@@ -13,13 +13,13 @@ const PORT = Number(process.env.PORT || 3001);
 const DB_FILE = process.env.DB_FILE || "./data.db";
 
 // Configuración de seguridad
-const JWT_SECRET = process.env.JWT_SECRET || "eva360-secret-key-change-in-production";
+const JWT_SECRET = process.env.JWT_SECRET || "default-secret-key";
 const JWT_EXPIRES_IN = "8h";
 
-// Configuración de CORS: en desarrollo permite cualquier origen, en producción se puede restringir
+// Configuración de CORS
 const ALLOWED_ORIGINS = process.env.ALLOWED_ORIGINS 
   ? process.env.ALLOWED_ORIGINS.split(",").map(o => o.trim())
-  : null; // null = permitir todos (desarrollo)
+  : null;
 
 
 const LOG_DIR = process.env.LOG_DIR || "./logs";
@@ -165,7 +165,7 @@ if (firstRun) {
     INSERT INTO encuesta_equipo (encuesta_id, equipo_id, codigo, activo, evaluado_nombre)
     VALUES (1, 1, 'ABC123', 1, NULL);
   `);
-  logInfo("BD creada en primer arranque. Código de prueba: ABC123");
+  logInfo("Base de datos inicializada. Código inicial: ABC123");
 }
 
 (function ensureEvaluadoNombreColumn() {
@@ -208,7 +208,7 @@ app.use(helmet());
 
 // CORS: configuración según entorno
 const corsOptions = {
-  origin: ALLOWED_ORIGINS || true, // true = permitir todos (desarrollo)
+  origin: ALLOWED_ORIGINS || true,
   credentials: true,
   methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
   allowedHeaders: ["Content-Type", "Authorization"],
@@ -388,7 +388,7 @@ app.post(
       .prepare(`SELECT id, username, password_hash, activo FROM usuarios WHERE username = ?`)
       .get(username.trim());
     
-    // Si no existe el usuario, verificar credenciales hardcodeadas (compatibilidad)
+    // Verificar credenciales por defecto si el usuario no existe en BD
     if (!usuario) {
       if (username === "admin" && password === "admin1") {
         const token = jwt.sign(
@@ -397,7 +397,7 @@ app.post(
           { expiresIn: JWT_EXPIRES_IN }
         );
         
-        logInfo("Login exitoso (credenciales legacy)", {
+        logInfo("Login exitoso con credenciales por defecto", {
           endpoint: "/auth/login",
           username: "admin",
         });
