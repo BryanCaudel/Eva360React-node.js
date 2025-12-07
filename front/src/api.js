@@ -1,19 +1,19 @@
 import { API_URL } from "./config";
 
-// Almacenamiento del token (compartido entre api.js y useAuth.js)
+// Almacenamiento del token 
 let authToken = null;
 
-// Función para obtener el token actual (usada por useAuth y internamente)
+// Función para obtener el token actual 
 export function getAuthToken() {
   return authToken;
 }
 
-// Función para establecer el token (usada por useAuth)
+// Función para establecer el token 
 export function setAuthToken(token) {
   authToken = token;
 }
 
-// Función para limpiar el token (usada por useAuth)
+// Función para limpiar el token
 export function clearAuthToken() {
   authToken = null;
 }
